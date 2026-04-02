@@ -13,7 +13,14 @@ return new class extends Migration
      */
     public function up()
     {
-        //
+        Schema::create('shops', function (Blueprint $table) {
+            $table->id();
+            $table->string('domain')->unique();
+            $table->text('access_token')->nullable();
+            $table->json('scope')->nullable();
+            $table->timestamp('installed_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -23,6 +30,6 @@ return new class extends Migration
      */
     public function down()
     {
-        //
+        Schema::dropIfExists('shops');
     }
 };

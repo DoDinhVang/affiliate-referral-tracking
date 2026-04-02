@@ -1,7 +1,6 @@
 <?php
 
-use App\Http\Controllers\ShopController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Shopify\ShopifyShopController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,13 +14,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
-
-
-Route::prefix('shop')->group(function () {
-    Route::get('/access-token', [ShopController::class, 'getShopifyAccessToken']);
-    Route::get('/shopify-products', [ShopController::class, 'getShopifyProducts']);
-    Route::get('/access-scopes', [ShopController::class, 'getShopifyAccessScopes']);
+Route::middleware(['shopify.auth'])->group(function () {
+    Route::prefix('shopify')->group(function () {
+        Route::get('shop', [ShopifyShopController::class, 'getShopInfo']);
+    });
+    Route::prefix('v1')->group(function () {
+    });
 });

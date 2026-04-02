@@ -2,52 +2,20 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class ShopifyService
 {
-    protected $clientId;
-    protected $clientSecret;
-    protected $shop;
-    protected $shopifyApiVersion;
-
-    public function __construct()
-    {
-        $this->clientId = env('SHOPIFY_CLIENT_ID');
-        $this->clientSecret = env('SHOPIFY_CLIENT_SECRET');
-        $this->shop = env('SHOPIFY_SHOP');
-        $this->shopifyApiVersion = env('SHOPIFY_API_VERSION');
-    }
-
-    public function getAccessToken()
-    {
-        $accessToken = Cache::get('shopify_access_token');
-        if ($accessToken) {
-            return $accessToken;
-        }
-        $response = Http::post("https://{$this->shop}.myshopify.com/admin/oauth/access_token", [
-            'grant_type' => 'client_credentials',
-            'client_id' => $this->clientId,
-            'client_secret' => $this->clientSecret,
-        ]);
-
-        if ($response->failed()) {
-            throw new \Exception('Failed to get access token from Shopify: ' . $response->body());
-        }
-        $data = $response->json();
-        Cache::put('shopify_access_token', $data['access_token'], now()->addSeconds($data['expires_in'] - 60));
-        return $data['access_token'];
-    }
-
     public function graphql(string $query, array $variables = [])
     {
-        Log::info("check variable is empty", ['variables' => empty($variables)]);
+        $shop = Auth::guard('shop')->user();
+        $accessToken = $shop->access_token;
+        $domain = $shop->domain;
         $response = Http::withHeaders([
-            'X-Shopify-Access-Token' => $this->getAccessToken(),
+            'X-Shopify-Access-Token' => $accessToken,
             'Content-Type' => 'application/json',
-        ])->post("https://{$this->shop}.myshopify.com/admin/api/{$this->shopifyApiVersion}/graphql.json", [
+        ])->post("https://{$domain}/admin/api/" . env('SHOPIFY_API_VERSION') . "/graphql.json", [
             'query' => $query,
             'variables' => empty($variables) ? null : $variables,
         ]);
@@ -57,19 +25,17 @@ class ShopifyService
         }
         return $response->json();
     }
-    public function getAccessScopes()
+
+    public function getShopInfo()
     {
-        $query = '
-        query {
-            currentAppInstallation {
-                accessScopes {
-                description
-                handle
-                }
+        $query = '{
+            shop {
+                name
+                domain
+                email
             }
-        }
-        ';
-        $response = $this->graphql($query);
-        return $response;
+        }';
+
+        return $this->graphql($query);
     }
 }
